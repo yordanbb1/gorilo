@@ -1,4 +1,4 @@
-const CACHE = "gorilo-v3";
+const CACHE = "gorilo-v4";
 const ASSETS = [
   "./",
   "./index.html",
