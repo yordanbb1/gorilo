@@ -113,6 +113,31 @@
   .ghostbtn{width:100%;padding:13px;border-radius:12px;font-weight:700;font-size:13px;color:var(--muted);
     background:transparent;border:1px dashed var(--line);margin-top:10px}
 
+  .goalstrip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .goalstrip span{font-size:11px;color:var(--muted);background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:5px 9px}
+  .goalstrip b{color:var(--gold)}
+  .roundhead{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);
+    border-radius:14px;padding:10px 12px;margin-bottom:14px}
+  .roundhead .rnav{width:38px;height:38px;border-radius:10px;background:var(--bg3);border:1px solid var(--line);font-size:20px;font-weight:700;flex:none}
+  .roundhead .rnav:disabled{opacity:.3}
+  .roundhead .rtt{flex:1;text-align:center}
+  .roundhead .rn{font-size:15px;font-weight:800}
+  .roundhead .rpips{display:flex;gap:5px;justify-content:center;margin-top:6px}
+  .roundhead .rpips i{width:18px;height:5px;border-radius:3px;background:var(--bg3);display:block}
+  .roundhead .rpips i.on{background:linear-gradient(90deg,var(--hot),var(--hot2))}
+  .roundhead .rpips i.dn{background:var(--done)}
+  .excard.circ{padding:0}
+  .excard.circ .circtop{padding:13px 16px 0}
+  .excard.circ .cinfo .exname{font-size:15px}
+  .excard.circ .extarget{margin-top:6px;align-items:center}
+  .excard.circ .extarget .editex{margin-left:auto}
+  .excard.circ .setrow{padding:10px 12px 12px}
+  .excard.circ.rowdone{border-color:var(--done)}
+
+  .seg{display:flex;background:var(--bg3);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:6px}
+  .seg button{flex:1;height:44px;font-size:13px;font-weight:700;color:var(--muted)}
+  .seg button.on{background:linear-gradient(160deg,var(--hot2),var(--hot));color:#1a0c02}
+
   .timer{position:fixed;inset:0;z-index:60;background:rgba(8,9,11,.96);backdrop-filter:blur(8px);
     display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px calc(24px + var(--safe-b))}
   .timer .cap{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -355,7 +380,7 @@
   <div class="sheet">
     <h2 id="exEditTitle">Упражнение</h2>
     <div class="fld"><label>Име</label><input type="text" id="edName" placeholder="напр. Лицеви опори" /></div>
-    <div class="fld row">
+    <div class="fld row" id="edStationFields">
       <div><label>Серии</label><input type="number" inputmode="numeric" id="edSets" value="4" /></div>
       <div><label>Почивка (сек)</label><input type="number" inputmode="numeric" id="edRest" value="90" /></div>
     </div>
@@ -375,6 +400,16 @@
   <div class="sheet">
     <h2 id="dayEditTitle">Тренировъчен ден</h2>
     <div class="fld"><label>Име на деня</label><input type="text" id="dyName" placeholder="напр. Ден 3 — Крака" /></div>
+    <div class="fld"><label>Тип тренировка</label>
+      <div class="seg" id="dyModeSeg">
+        <button id="dyModeCirc" onclick="App.setDayMode('circuit')">Кръгова</button>
+        <button id="dyModeStat" onclick="App.setDayMode('station')">По упражнение</button>
+      </div>
+    </div>
+    <div class="fld row" id="dyCircFields">
+      <div><label>Брой кръгове</label><input type="number" inputmode="numeric" id="dyRounds" value="4" /></div>
+      <div><label>Почивка между кръгове (сек)</label><input type="number" inputmode="numeric" id="dyRest" value="150" /></div>
+    </div>
     <div class="fld"><label>Цвят</label><div class="swatches" id="dySwatches"></div></div>
     <div class="sheetbtns">
       <button class="btn-del hidden" id="dyDelete" onclick="App.deleteDay()">🗑</button>
@@ -411,7 +446,7 @@ let MEM=null;
 function gid(){ return "x"+Math.random().toString(36).slice(2,9); }
 function seedDays(){
   return [
-    { id:"d_full", name:"Ден 1 — Цяло тяло", color:"#FF6A1A", ex:[
+    { id:"d_full", name:"Ден 1 — Цяло тяло", color:"#FF6A1A", mode:"circuit", rounds:4, roundRest:150, ex:[
       {id:gid(),name:"Лицеви опори",sets:5,reps:"5 → 100",rest:90,weighted:false,goal:100,note:"+1 повт./седмица. Таван → по-трудна версия (крака на пейка, по-бавно)."},
       {id:gid(),name:"Кофички",sets:5,reps:"5 → 40",rest:90,weighted:false,goal:40,note:"Бавно надолу. После добавяй тежест (раница)."},
       {id:gid(),name:"TRX набиране / дърпане",sets:5,reps:"5 → 10",rest:90,weighted:false,note:"По-хоризонтално тяло = по-трудно."},
@@ -420,7 +455,7 @@ function seedDays(){
       {id:gid(),name:"Kettlebell clean & press",sets:4,reps:"5 → 8 / ръка",rest:90,weighted:true,note:"Първо техника, после тежест."},
       {id:gid(),name:"Корем (планка)",sets:3,reps:"20 → 40 сек",rest:45,weighted:false,note:"Бавно, без засилване."},
     ]},
-    { id:"d_arms", name:"Ден 2 — Ръце", color:"#5BB8D4", ex:[
+    { id:"d_arms", name:"Ден 2 — Ръце", color:"#5BB8D4", mode:"station", ex:[
       {id:gid(),name:"Сгъване за бицепс",sets:4,reps:"8–12",rest:60,weighted:true},
       {id:gid(),name:"Чуково сгъване",sets:3,reps:"10–12",rest:60,weighted:true},
       {id:gid(),name:"Трицепс над глава",sets:4,reps:"10–12",rest:60,weighted:true},
@@ -429,7 +464,7 @@ function seedDays(){
   ];
 }
 function blank(){ return { days:seedDays(), sessions:[], food:{}, goals:{water:8,protein:170,cal:2900}, created:Date.now() }; }
-function load(){ try{ const s=localStorage.getItem(KEY); if(!s) return blank(); const d=JSON.parse(s); if(!d.goals)d.goals={water:8,protein:170,cal:2900}; if(!d.food)d.food={}; return d; }catch(e){ return MEM||blank(); } }
+function load(){ try{ const s=localStorage.getItem(KEY); if(!s){ const b=blank(); try{localStorage.setItem(KEY,JSON.stringify(b));}catch(e){} MEM=b; return b; } const d=JSON.parse(s); if(!d.goals)d.goals={water:8,protein:170,cal:2900}; if(!d.food)d.food={}; (d.days||[]).forEach(day=>{ if(!day.mode)day.mode=(day.id==="d_full"?"circuit":"station"); if(day.rounds==null)day.rounds=4; if(day.roundRest==null)day.roundRest=150; }); return d; }catch(e){ return MEM||blank(); } }
 function save(d){ MEM=d; try{ localStorage.setItem(KEY,JSON.stringify(d)); }catch(e){} }
 
 const SWATCH=["#FF6A1A","#5BB8D4","#36D399","#F6C445","#B98AFF","#FF5D8F"];
@@ -465,10 +500,11 @@ const App={
     document.getElementById("topRight").innerHTML = d.sessions.length?("Последно<br><b style='color:var(--text)'>"+daysAgo(last.ts)+"</b>"):"Започни днес";
     d.days.forEach(day=>{
       const ls=[...d.sessions].reverse().find(s=>s.dayId===day.id);
+      const modeLabel=day.mode==="circuit"?("кръгова · "+(day.rounds||4)+" кръга"):"по упражнение";
       const c=document.createElement("button"); c.className="daycard";
       c.onclick=()=> this.editMode ? this.openDayEditor(day.id) : this.startWorkout(day.id);
       c.innerHTML='<span class="dot" style="background:linear-gradient(160deg,'+day.color+',#ffffff22)">'+(this.editMode?'✎':'▶')+'</span>'+
-        '<span class="meta"><span class="nm">'+day.name+'</span><span class="ds">'+day.ex.length+' упр.'+(ls?' · '+daysAgo(ls.ts):' · още не е правена')+'</span></span>'+
+        '<span class="meta"><span class="nm">'+day.name+'</span><span class="ds">'+day.ex.length+' упр. · '+modeLabel+(ls?' · '+daysAgo(ls.ts):'')+'</span></span>'+
         '<span class="go">'+(this.editMode?'✎':'›')+'</span>';
       host.appendChild(c);
     });
@@ -482,17 +518,20 @@ const App={
 
   startWorkout(dayId){
     const day=dayById(dayId);
-    this.active={dayId, startedAt:Date.now(), entries:{}};
+    this.active={dayId, mode:day.mode||"station", startedAt:Date.now(), entries:{}, cur:0, rounds:(day.rounds||4)};
     day.ex.forEach(ex=>{
       const prev=lastEntry(ex.id); this.active.entries[ex.id]=[];
-      for(let i=0;i<ex.sets;i++){ const pv=prev&&prev[i]?prev[i]:(prev&&prev[0]?prev[0]:null);
+      const n=this.active.mode==="circuit"?this.active.rounds:ex.sets;
+      for(let i=0;i<n;i++){ const pv=prev&&prev[i]?prev[i]:(prev&&prev[0]?prev[0]:null);
         this.active.entries[ex.id].push({w:pv?(pv.w||0):0, r:pv?(pv.r||0):0, done:false}); }
     });
     document.getElementById("wkTitle").textContent=day.name;
     this.renderWorkout(); this.go("workout");
   },
   renderWorkout(){
-    const day=dayById(this.active.dayId); const host=document.getElementById("exList"); host.innerHTML="";
+    const day=dayById(this.active.dayId);
+    if(this.active.mode==="circuit"){ this.renderCircuit(day); return; }
+    const host=document.getElementById("exList"); host.innerHTML="";
     day.ex.forEach(ex=>host.appendChild(this.exCard(day,ex)));
     const add=document.createElement("button"); add.className="ghostbtn"; add.textContent="+ Добави упражнение към този ден";
     add.onclick=()=>this.openExEditor(this.active.dayId,null); host.appendChild(add);
@@ -500,6 +539,72 @@ const App={
     fin.onclick=()=>this.finishWorkout(); host.appendChild(fin);
     this.updateProgress();
   },
+
+  /* ---- circuit (кръгова) ---- */
+  renderCircuit(day){
+    const host=document.getElementById("exList"); host.innerHTML="";
+    const cur=this.active.cur, R=this.active.rounds;
+    // goal strip
+    const goals=day.ex.filter(e=>e.goal);
+    if(goals.length){ let g='<div class="goalstrip">'; goals.forEach(e=>{ const b=bestReps(e.id);
+      g+='<span>🎯 '+e.name.split(" ")[0]+' <b>'+b+'/'+e.goal+'</b></span>'; }); g+='</div>';
+      const gd=document.createElement("div"); gd.innerHTML=g; host.appendChild(gd.firstChild); }
+    // round header
+    const rh=document.createElement("div"); rh.className="roundhead";
+    let pips=""; for(let i=0;i<R;i++){ const dn=day.ex.every(e=>(this.active.entries[e.id][i]||{}).done);
+      pips+='<i class="'+(i===cur?"on":(dn?"dn":""))+'"></i>'; }
+    rh.innerHTML='<button class="rnav" onclick="App.gotoRound(-1)" '+(cur===0?"disabled":"")+'>‹</button>'+
+      '<div class="rtt"><div class="rn">Кръг '+(cur+1)+' / '+R+'</div><div class="rpips">'+pips+'</div></div>'+
+      '<button class="rnav" onclick="App.gotoRound(1)" '+(cur>=R-1?"disabled":"")+'>›</button>';
+    host.appendChild(rh);
+    // exercises (one row each = this round)
+    day.ex.forEach(ex=>host.appendChild(this.circuitRow(day,ex,cur)));
+    // add exercise
+    const add=document.createElement("button"); add.className="ghostbtn"; add.textContent="+ Добави упражнение към този ден";
+    add.onclick=()=>this.openExEditor(this.active.dayId,null); host.appendChild(add);
+    // footer action
+    const fin=document.createElement("button"); fin.className="finishbtn";
+    fin.textContent=(cur>=R-1)?"Завърши тренировката":("Завърши кръг "+(cur+1)+" → почивка");
+    fin.onclick=()=>this.finishRound(); host.appendChild(fin);
+    this.updateProgress();
+  },
+  circuitRow(day,ex,i){
+    const st=this.active.entries[ex.id][i]; const prev=lastEntry(ex.id);
+    const card=document.createElement("div"); card.className="excard circ"+(st.done?" rowdone":"");
+    card.id="crow_"+ex.id;
+    let h='<div class="circtop"><div class="cinfo"><div class="exname">'+ex.name+'</div>'+
+      '<div class="extarget"><span class="chip"><b>'+ex.reps+'</b></span>'+
+      (prev&&prev[i]?'<span class="chip">минало <b>'+((prev[i].w?prev[i].w+"×":"")+prev[i].r)+'</b></span>':"")+
+      '<button class="editex" onclick="App.openExEditor(\''+day.id+'\',\''+ex.id+'\')">✎</button></div></div></div>';
+    h+='<div class="setrow'+(st.done?" done":"")+'">';
+    if(ex.weighted){ h+='<div class="field"><div class="lab">кг</div><div class="stepper">'+
+      '<button onclick="App.stepC(\''+ex.id+'\',\'w\',-1)">−</button>'+
+      '<input type="number" inputmode="decimal" value="'+st.w+'" onchange="App.setValC(\''+ex.id+'\',\'w\',this.value)">'+
+      '<button onclick="App.stepC(\''+ex.id+'\',\'w\',1)">+</button></div></div>'; }
+    h+='<div class="field"><div class="lab">повт.</div><div class="stepper">'+
+      '<button onclick="App.stepC(\''+ex.id+'\',\'r\',-1)">−</button>'+
+      '<input type="number" inputmode="numeric" value="'+st.r+'" onchange="App.setValC(\''+ex.id+'\',\'r\',this.value)">'+
+      '<button onclick="App.stepC(\''+ex.id+'\',\'r\',1)">+</button></div></div>';
+    h+='<button class="donebtn" onclick="App.toggleCircuit(\''+ex.id+'\')">✓</button></div>';
+    card.innerHTML=h; return card;
+  },
+  stepC(exId,f,d){ const i=this.active.cur; const st=this.active.entries[exId][i];
+    if(f==="w")st.w=Math.max(0,Math.round((st.w+d)*10)/10); else st.r=Math.max(0,st.r+d);
+    const row=document.getElementById("crow_"+exId); if(row){ const inp=row.querySelector('input[onchange*="\''+f+'\'"]'); if(inp)inp.value=(f==="w"?st.w:st.r); } },
+  setValC(exId,f,v){ const st=this.active.entries[exId][this.active.cur]; const n=parseFloat(v)||0; if(f==="w")st.w=Math.max(0,n); else st.r=Math.max(0,Math.round(n)); },
+  toggleCircuit(exId){ const day=dayById(this.active.dayId); const i=this.active.cur;
+    const st=this.active.entries[exId][i]; st.done=!st.done;
+    const row=document.getElementById("crow_"+exId); if(row){ row.classList.toggle("rowdone",st.done); row.querySelector(".setrow").classList.toggle("done",st.done); }
+    this.updateProgress();
+    if(st.done && day.ex.every(e=>this.active.entries[e.id][i].done)) this.finishRound(); },
+  finishRound(){
+    const day=dayById(this.active.dayId); const i=this.active.cur, R=this.active.rounds;
+    day.ex.forEach(e=>{ const st=this.active.entries[e.id][i]; st.done=(st.r>0); });
+    if(i>=R-1){ this.finishWorkout(); return; }
+    this.active.cur++; this.renderCircuit(day);
+    this.startTimer(day.roundRest||150,"Кръг "+(this.active.cur+1),"before");
+  },
+  gotoRound(d){ const R=this.active.rounds; const n=this.active.cur+d; if(n<0||n>=R)return; this.active.cur=n; this.renderCircuit(dayById(this.active.dayId)); },
   exCard(day,ex){
     const sets=this.active.entries[ex.id]; const prev=lastEntry(ex.id);
     const card=document.createElement("div"); card.className="excard";
@@ -538,7 +643,7 @@ const App={
   refreshCard(exId){ const day=dayById(this.active.dayId); const ex=exById(day,exId);
     const old=document.getElementById("row_"+exId+"_0"); if(!old)return; const card=old.closest(".excard"); card.replaceWith(this.exCard(day,ex)); },
   completeSet(exId,i){ const st=this.active.entries[exId][i]; st.done=!st.done; this.refreshCard(exId); this.updateProgress();
-    if(st.done){ const ex=exById(dayById(this.active.dayId),exId); this.startTimer(ex.rest,ex.name); } },
+    if(st.done){ const ex=exById(dayById(this.active.dayId),exId); this.startTimer(ex.rest,ex.name,"after"); } },
   updateProgress(){ const day=dayById(this.active.dayId); let t=0,dn=0;
     day.ex.forEach(ex=>(this.active.entries[ex.id]||[]).forEach(s=>{t++;if(s.done)dn++;}));
     document.getElementById("wkProg").style.width=(t?Math.round(dn/t*100):0)+"%"; },
@@ -571,6 +676,7 @@ const App={
     document.getElementById("edWeighted").checked=ex?!!ex.weighted:false;
     document.getElementById("edNote").value=ex&&ex.note?ex.note:"";
     document.getElementById("edDelete").classList.toggle("hidden",!ex);
+    document.getElementById("edStationFields").classList.toggle("hidden", day.mode==="circuit");
     document.getElementById("exEditor").classList.remove("hidden");
   },
   closeExEditor(){ document.getElementById("exEditor").classList.add("hidden"); },
@@ -587,7 +693,7 @@ const App={
     else { obj.id=gid(); day.ex.push(obj); }
     save(d); this.closeExEditor();
     if(this.active&&this.active.dayId===day.id){
-      if(!this.active.entries[obj.id]){ this.active.entries[obj.id]=[]; for(let i=0;i<obj.sets;i++)this.active.entries[obj.id].push({w:0,r:0,done:false}); }
+      if(!this.active.entries[obj.id]){ this.active.entries[obj.id]=[]; const n=this.active.mode==="circuit"?this.active.rounds:obj.sets; for(let i=0;i<n;i++)this.active.entries[obj.id].push({w:0,r:0,done:false}); }
       this.renderWorkout();
     } else this.renderDays();
   },
@@ -599,25 +705,38 @@ const App={
   },
 
   openDayEditor(dayId){
-    this.dayEdit={id:dayId||null,color:SWATCH[0]};
+    this.dayEdit={id:dayId||null,color:SWATCH[0],mode:"circuit"};
     const day=dayId?dayById(dayId):null;
     document.getElementById("dayEditTitle").textContent=day?"Редактирай деня":"Нов ден";
     document.getElementById("dyName").value=day?day.name:"";
     this.dayEdit.color=day?day.color:SWATCH[0];
+    this.dayEdit.mode=day?(day.mode||"station"):"circuit";
+    document.getElementById("dyRounds").value=day?(day.rounds||4):4;
+    document.getElementById("dyRest").value=day?(day.roundRest||150):150;
+    this.setDayMode(this.dayEdit.mode);
     const sw=document.getElementById("dySwatches"); sw.innerHTML="";
     SWATCH.forEach(c=>{ const b=document.createElement("button"); b.className="swatch"+(c===this.dayEdit.color?" sel":"");
       b.style.background=c; b.onclick=()=>{ this.dayEdit.color=c; [...sw.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); }; sw.appendChild(b); });
     document.getElementById("dyDelete").classList.toggle("hidden",!day);
     document.getElementById("dayEditor").classList.remove("hidden");
   },
+  setDayMode(m){ this.dayEdit.mode=m;
+    document.getElementById("dyModeCirc").classList.toggle("on",m==="circuit");
+    document.getElementById("dyModeStat").classList.toggle("on",m==="station");
+    document.getElementById("dyCircFields").classList.toggle("hidden",m!=="circuit");
+  },
   closeDayEditor(){ document.getElementById("dayEditor").classList.add("hidden"); },
   saveDay(){
     const name=document.getElementById("dyName").value.trim(); if(!name){ alert("Сложи име на деня."); return; }
+    const mode=this.dayEdit.mode||"station";
+    const rounds=Math.max(1,parseInt(document.getElementById("dyRounds").value)||4);
+    const roundRest=Math.max(0,parseInt(document.getElementById("dyRest").value)||150);
     const d=load();
-    if(this.dayEdit.id){ const day=d.days.find(x=>x.id===this.dayEdit.id); day.name=name; day.color=this.dayEdit.color;
+    if(this.dayEdit.id){ const day=d.days.find(x=>x.id===this.dayEdit.id); day.name=name; day.color=this.dayEdit.color; day.mode=mode; day.rounds=rounds; day.roundRest=roundRest;
       if(this.active&&this.active.dayId===day.id) document.getElementById("wkTitle").textContent=name; }
-    else { d.days.push({id:gid(),name,color:this.dayEdit.color,ex:[]}); }
-    save(d); this.closeDayEditor(); this.renderDays();
+    else { d.days.push({id:gid(),name,color:this.dayEdit.color,mode,rounds,roundRest,ex:[]}); }
+    save(d); this.closeDayEditor();
+    if(this.active&&this.active.dayId===this.dayEdit.id) this.renderWorkout(); else this.renderDays();
   },
   deleteDay(){
     const d=load(); if(d.days.length<=1){ alert("Трябва да остане поне един ден."); return; }
@@ -626,14 +745,15 @@ const App={
     if(this.active&&this.active.dayId===this.dayEdit.id){ this.active=null; this.go("train"); } else this.renderDays();
   },
 
-  startTimer(sec,name){ const t=this.timer; clearInterval(t.int); t.total=sec;t.left=sec;t.running=true;t.exName=name;t.zero=false;
-    document.getElementById("tExName").textContent="след «"+name+"»"; document.getElementById("tPause").textContent="Пауза";
+  startTimer(sec,name,mode){ const t=this.timer; clearInterval(t.int); t.total=sec;t.left=sec;t.running=true;t.exName=name;t.mode=mode||"after";t.zero=false;
+    document.getElementById("tExName").textContent=(t.mode==="before")?("преди "+name):("след «"+name+"»");
+    document.getElementById("tPause").textContent="Пауза";
     document.getElementById("ring").classList.remove("done"); document.getElementById("tState").textContent="остават";
     document.getElementById("timer").classList.remove("hidden"); this.drawTimer(); t.int=setInterval(()=>this.tick(),1000); },
   tick(){ const t=this.timer; if(!t.running)return; t.left--; if(t.left<=0){t.left=0;this.drawTimer();if(!t.zero)this.timerZero();return;} this.drawTimer(); },
   timerZero(){ const t=this.timer; t.zero=true;t.running=false;clearInterval(t.int);
     document.getElementById("ring").classList.add("done"); document.getElementById("tDisplay").textContent="GO";
-    document.getElementById("tState").textContent="следваща серия"; document.getElementById("tPause").textContent="Готово";
+    document.getElementById("tState").textContent=(this.timer.mode==="before")?"започни кръга":"следваща серия"; document.getElementById("tPause").textContent="Готово";
     this.beep(); if(navigator.vibrate)navigator.vibrate([220,120,220]); setTimeout(()=>{if(this.timer.zero)this.closeTimer();},2500); },
   drawTimer(){ const t=this.timer; const m=Math.floor(t.left/60),s=t.left%60;
     document.getElementById("tDisplay").textContent=t.left>0?(m+":"+String(s).padStart(2,"0")):"GO";
